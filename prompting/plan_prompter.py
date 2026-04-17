@@ -3,7 +3,6 @@ import json
 import pickle 
 import numpy as np
 from rocobench.envs import MujocoSimEnv, EnvState
-import openai
 from datetime import datetime
 from .feedback import FeedbackManager
 from .parser import LLMResponseParser
@@ -24,8 +23,7 @@ Each <coord> is a tuple (x,y,z) for gripper location, follow these steps to plan
         e.g. given path [(0.1, 0.2, 0.3), (0.2, 0.2. 0.3), (0.3, 0.4. 0.7)], the distance between steps (0.1, 0.2, 0.3)-(0.2, 0.2. 0.3) is too low, and between (0.2, 0.2. 0.3)-(0.3, 0.4. 0.7) is too high. You can change the path to [(0.1, 0.2, 0.3), (0.15, 0.3. 0.5), (0.3, 0.4. 0.7)] 
     If a plan failed to execute, re-plan to choose more feasible steps in each PATH, or choose different actions.
 """
-OPENAI_KEY = str(json.load(open("openai_key.json")))
-openai.api_key = OPENAI_KEY
+from prompting.local_llm import query_local_llm
 
 
 def get_chat_prompt(env: MujocoSimEnv):
@@ -64,8 +62,7 @@ class SingleThreadPrompter:
         num_replans: int = 3,
         debug_mode: bool = False,   
         temperature: float = 0,
-        max_tokens: int = 1000, 
-        llm_source: str = "gpt-4",
+        max_tokens: int = 1000,
     ):
         self.env = env 
         self.robot_agent_names = env.get_sim_robots().keys()
@@ -78,7 +75,6 @@ class SingleThreadPrompter:
         self.use_waypoints = use_waypoints
         self.use_history = use_history
         self.temperature = temperature
-        self.llm_source = llm_source
         self.max_tokens = max_tokens
 
         self.round_history = [] # [obs_t, action_t] but only if action_t got executed
@@ -224,10 +220,7 @@ Re-format to strictly follow [Action Output Instruction]!
 
 
     def query_once(self, system_prompt, user_prompt=""):
-        response = None
-        usage = None   
-        # print('======= system prompt ======= \n ', system_prompt)
-        if self.debug_mode: # query human user input
+        if self.debug_mode:
             response = "EXECUTE\n"
             for aname in self.robot_agent_names:
                 action = input(f"Enter action for {aname}:\n")
@@ -237,22 +230,24 @@ Re-format to strictly follow [Action Output Instruction]!
         for n in range(self.max_api_queries):
             print('querying {}th time'.format(n))
             try:
-                response = openai.ChatCompletion.create(
-                    model=self.llm_source,
-                    messages=[
-                        # {"role": "user", "content": user_prompt},
-                        {"role": "system", "content": system_prompt},                                    
-                    ],
+                messages = [
+                    {"role": "system", "content": system_prompt}, 
+                    {"role": "user", "content": user_prompt if user_prompt else "Continue."},
+                ]
+                response = query_local_llm(
+                    messages=messages,
                     max_tokens=self.max_tokens,
-                    temperature=self.temperature, 
-                    )
+                    temperature=self.temperature,
+                )
                 usage = response['usage']
                 response = response['choices'][0]['message']["content"]
                 print('======= response ======= \n ', response)
                 print('======= usage ======= \n ', usage)
                 break
-            except:
-                print("API error, try again")
+            except Exception as e:
+                print(f"LLM error: {e}, retrying...")
+                response = None
+                usage = {}
             continue
         return response, usage
 

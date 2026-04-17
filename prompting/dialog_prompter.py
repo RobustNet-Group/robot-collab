@@ -1,7 +1,6 @@
 import os 
 import json
-import pickle 
-import openai
+import pickle
 import numpy as np
 from datetime import datetime
 from os.path import join
@@ -13,9 +12,7 @@ from rocobench.envs import MujocoSimEnv, EnvState
 from .feedback import FeedbackManager
 from .parser import LLMResponseParser
 
-assert os.path.exists("openai_key.json"), "Please put your OpenAI API key in a string in robot-collab/openai_key.json"
-OPENAI_KEY = str(json.load(open("openai_key.json")))
-openai.api_key = OPENAI_KEY
+from prompting.local_llm import query_local_llm
 
 PATH_PLAN_INSTRUCTION="""
 [Path Plan Instruction]
@@ -51,7 +48,6 @@ class DialogPrompter:
         use_history: bool = True,  
         use_feedback: bool = True,
         temperature: float = 0,
-        llm_source: str = "gpt-4"
     ):
         self.max_tokens = max_tokens
         self.debug_mode = debug_mode
@@ -69,8 +65,6 @@ class DialogPrompter:
         self.latest_chat_history = []
         self.max_calls_per_round = max_calls_per_round 
         self.temperature = temperature
-        self.llm_source = llm_source
-        assert llm_source in ["gpt-4", "gpt-3.5-turbo", "claude"], f"llm_source must be one of [gpt4, gpt-3.5-turbo, claude], got {llm_source}"
 
     def compose_system_prompt(
         self, 
@@ -224,6 +218,7 @@ Your response is:
 
                 num_responses[agent_name] += 1
                 # strip all the repeated \n and blank spaces in response: 
+                if response is None: response = ""
                 pruned_response = response.strip()
                 # pruned_response = pruned_response.replace("\n", " ")
                 agent_responses.append(
@@ -248,12 +243,7 @@ Your response is:
         return agent_name, response, agent_responses
 
     def query_once(self, system_prompt, user_prompt, max_query):
-        response = None
-        usage = None   
-        # print('======= system prompt ======= \n ', system_prompt)
-        # print('======= user prompt ======= \n ', user_prompt)
-
-        if self.debug_mode: 
+        if self.debug_mode:
             response = "EXECUTE\n"
             for aname in self.robot_agent_names:
                 action = input(f"Enter action for {aname}:\n")
@@ -263,24 +253,25 @@ Your response is:
         for n in range(max_query):
             print('querying {}th time'.format(n))
             try:
-                response = openai.ChatCompletion.create(
-                    model=self.llm_source, 
-                    messages=[
-                        # {"role": "user", "content": ""},
-                        {"role": "system", "content": system_prompt+user_prompt},                                    
-                    ],
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt if user_prompt else "Continue."},
+                ]
+                response = query_local_llm(
+                    messages=messages,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
-                    )
+                )
                 usage = response['usage']
                 response = response['choices'][0]['message']["content"]
                 print('======= response ======= \n ', response)
                 print('======= usage ======= \n ', usage)
                 break
-            except:
-                print("API error, try again")
+            except Exception as e:
+                print(f"LLM error: {e}, retrying...")
+                response = None
+                usage = {}
             continue
-        # breakpoint()
         return response, usage
     
     def post_execute_update(self, obs_desp: str, execute_success: bool, parsed_plan: str):

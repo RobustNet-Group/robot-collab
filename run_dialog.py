@@ -37,7 +37,7 @@ class LLMRunner:
         max_runner_steps: int = 50,
         video_format: str = "mp4",
         num_runs: int = 1,
-        verbose: bool =False,
+        verbose: bool = False,
         np_seed: int = 0,
         start_seed: int = 0,
         run_name: str = "run",
@@ -47,7 +47,7 @@ class LLMRunner:
         llm_comm_mode="chat",
         llm_num_replans=1,
         give_env_feedback=True,
-        skip_display=False,
+        skip_display=True,
         policy_kwargs: Dict[str, Any] = dict(control_freq=50),
         direct_waypoints: int = 0,
         max_failed_waypoints: int = 0,
@@ -56,7 +56,6 @@ class LLMRunner:
         use_history: bool = False,
         use_feedback: bool = False,
         temperature: float = 0.0,
-        llm_source: str = "gpt4",
         ):
         self.env = env
         self.env.reset()
@@ -81,7 +80,6 @@ class LLMRunner:
 
         self.llm_output_mode = llm_output_mode
         self.debug_mode = debug_mode # useful for debug
-
 
         self.llm_num_replans = llm_num_replans
         self.llm_comm_mode = llm_comm_mode
@@ -123,14 +121,13 @@ class LLMRunner:
                 env=self.env,
                 parser=self.parser,
                 feedback_manager=self.feedback_manager,
-                max_tokens=1024,
+                max_tokens=8192,
                 debug_mode=self.debug_mode,
                 use_waypoints=(self.llm_output_mode == "action_and_path"),
                 use_history=self.use_history,
                 num_replans=self.llm_num_replans,
                 comm_mode=llm_comm_mode,
                 temperature=self.temperature,
-                llm_source=llm_source,
             )
 
         else:
@@ -138,7 +135,7 @@ class LLMRunner:
                 env=self.env,
                 parser=self.parser,
                 feedback_manager=self.feedback_manager,
-                max_tokens=512,
+                max_tokens=8192,
                 debug_mode=self.debug_mode,
                 robot_name_map=self.env.robot_name_map,
                 max_calls_per_round=10,
@@ -147,7 +144,6 @@ class LLMRunner:
                 use_feedback=self.use_feedback,
                 num_replans=self.llm_num_replans,
                 temperature=self.temperature,
-                llm_source=llm_source,
             )
 
 
@@ -458,7 +454,6 @@ def main(args):
         use_history=(not args.no_history),
         use_feedback=(not args.no_feedback),
         temperature=args.temperature,
-        llm_source=args.llm_source,
     )
     runner.run(args)
 
@@ -487,7 +482,6 @@ if __name__ == "__main__":
     parser.add_argument("--split_parsed_plans", "-sp", action="store_true")
     parser.add_argument("--no_history", "-nh", action="store_true")
     parser.add_argument("--no_feedback", "-nf", action="store_true")
-    parser.add_argument("--llm_source", "-llm", type=str, default="gpt-4")
     logging.basicConfig(level=logging.INFO)
 
     args = parser.parse_args()
