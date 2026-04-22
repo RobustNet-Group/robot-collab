@@ -139,6 +139,7 @@ def visualize_voxel_scene(
     save_img = False,
     img_path = 'test.jpg',
     expand_path = False,
+    skip_visualization = False,
     ):
     """ Displays the scene and path points as voxels """
     pcd = obs_pcd.to_open3d()
@@ -188,7 +189,9 @@ def visualize_voxel_scene(
     view_control.set_front([1, 0, 0])
     view_control.set_up([0, 0, 1])
     view_control.set_lookat([0, 0, 0])
-    visualizer.run()
+    
+    if not skip_visualization:
+        visualizer.run()
         
     color = visualizer.capture_screen_float_buffer(False)
     color = np.asarray(color) 

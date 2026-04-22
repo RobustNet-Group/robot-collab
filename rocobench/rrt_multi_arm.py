@@ -503,8 +503,8 @@ class MultiArmRRT:
                 ]
                 , axis=1
             )
-            plt.imshow(img_arr)
-            plt.show()
+            # plt.imshow(img_arr)
+            # plt.show()  # Disabled to prevent blocking in batch runs
             
             qpos_str = " ".join(physics.data.qpos.astype(str))
             print(f"<key name='rrt_check' qpos='{qpos_str}'/>")

@@ -415,8 +415,10 @@ class MujocoSimEnv:
             imgs.append(img_arr)
         imgs = np.concatenate(imgs, axis=1)
         if show:
-            plt.imshow(imgs)
-            plt.show()
+            # Visualization disabled to prevent blocking in batch runs
+            pass
+            # plt.imshow(imgs)
+            # plt.show()
         if save_img:
             tosave = Image.fromarray(imgs)
             tosave.save(output_name)

@@ -10,6 +10,8 @@ from copy import deepcopy
 import argparse
 from typing import List, Tuple, Dict, Union, Optional, Any
 from collections import defaultdict
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to prevent blocking in batch runs
 import matplotlib.pyplot as plt
 
 from rocobench.envs import SortOneBlockTask, CabinetTask, MoveRopeTask, SweepTask, MakeSandwichTask, PackGroceryTask, MujocoSimEnv, SimRobot, visualize_voxel_scene
@@ -161,7 +163,8 @@ class LLMRunner:
             obs.scene,
             path_pts=path_ls,
             save_img=(save_dir is not None),
-            img_path=save_path
+            img_path=save_path,
+            skip_visualization=self.skip_display
             )
         
 
@@ -414,7 +417,6 @@ def main(args):
         randomize_init=True,
         render_point_cloud=0,
         render_cameras=["face_panda","face_ur5e","teaser",],
-        one_obj_each=True,
     )
     robots = env.get_sim_robots()
     if args.no_feedback:
