@@ -50,9 +50,12 @@ def _build_stack(task: str, seed: int):
     return env, robots, planner, parser, feedback, policy_kwargs
 
 
-def _agent_prompts(env) -> Dict[str, str]:
+def _agent_prompts(env, output_mode: str) -> Dict[str, str]:
     obs = env.get_obs()
     action_desp = env.get_action_prompt()
+    if output_mode == "action_and_path":
+        from prompting.dialog_prompter import PATH_PLAN_INSTRUCTION
+        action_desp += PATH_PLAN_INSTRUCTION
     return {
         env.robot_name_map[r]: f"{action_desp}\n{env.get_agent_prompt(obs, env.robot_name_map[r])}"
         for r in env.robot_names
@@ -78,11 +81,13 @@ def get_ray_roco_worker_cls(num_workers: int = 32):
             self.parser = None
             self.feedback = None
             self.policy_kwargs = None
+            self.output_mode = "action_only"
 
         def reset(self, task: str, seed: int) -> Dict[str, Any]:
             (self.env, self.robots, self.planner, self.parser, self.feedback,
              self.policy_kwargs) = _build_stack(task, seed)
             self.task, self.seed = task, seed
+            self.output_mode = "action_and_path" if task in ("rope", "pack") else "action_only"
             return self._state(chat_history=[])
 
         def apply_plan(self, response_text: str, chat_history: List[str]) -> Dict[str, Any]:
@@ -132,7 +137,7 @@ def get_ray_roco_worker_cls(num_workers: int = 32):
                        else feedback)
             return dict(
                 task=self.task, seed=self.seed, step_idx=0,
-                agent_prompts=_agent_prompts(self.env),
+                agent_prompts=_agent_prompts(self.env, self.output_mode),
                 chat_history=list(chat_history),
                 last_feedback=wrapped, last_response=response,
                 last_executed_ok=executed_ok, reward=reward,

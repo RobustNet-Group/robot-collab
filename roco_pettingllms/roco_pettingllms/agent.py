@@ -21,6 +21,9 @@ class RoCoDialogAgent(Agent):
 
     def update_from_env(self, turn_idx, env_data):
         state: RoCoEnvState = env_data.state
+        if not state.initialized:
+            self.current_prompt = {"text": "Reply with: READY", "image": None}
+            return
         body = state.agent_prompts.get(self.agent_name, "")
         chat = "\n".join(state.chat_history) if state.chat_history else ""
         feedback = state.last_feedback or ""
@@ -45,7 +48,7 @@ class RoCoDialogAgent(Agent):
         if not state.initialized and env_worker is not None:
             new_state = await env_worker.reset.remote(state.task, state.seed)
             env_data.state = RoCoEnvState(**new_state)
-            state = env_data.state
+            return
 
         msg = f"[{self.agent_name}]: {self._last_response}"
         state.chat_history = state.chat_history + [msg]

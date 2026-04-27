@@ -68,7 +68,7 @@ training:
   val_freq: 10
   val_batch_size: 4
   max_prompt_length: 8192
-  max_response_length: 4096
+  max_response_length: 2048
   num_workers: 16
   generate_timeout: 600
   step_timeout: 600

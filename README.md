@@ -12,22 +12,26 @@ Codebase for paper: RoCo: Dialectic Multi-Robot Collaboration with Large Languag
 ## Setup
 ### setup conda env and package install
 ```
-conda create -n roco python=3.8 
+conda create -n roco python=3.10
 conda activate roco
 ```
 
 ### Install mujoco and dm_control 
 ```
-pip install mujoco==2.3.0 dm_control==1.0.8 tokenizers==0.13.3
+pip install mujoco==2.3.0 dm_control==1.0.8 tokenizers==0.13.3 distro open3d ray==2.48.0
 grep -v "^anthropic" requirements.txt | pip install -r /dev/stdin
 pip install "openai==0.27.2" --force-reinstall
-pip install distro open3d ray
 pip install -e .
 ```
 
 ### Install other packages
 ```
 pip install -r requirements.txt
+```
+
+### Note on opentelemetry bugfix
+```
+pip install "opentelemetry-exporter-prometheus==0.58b0"
 ```
 
 ## Usage 
